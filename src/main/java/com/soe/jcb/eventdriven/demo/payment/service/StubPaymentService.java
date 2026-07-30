@@ -1,9 +1,11 @@
 package com.soe.jcb.eventdriven.demo.payment.service;
 
+import com.soe.jcb.eventdriven.demo.common.event.DomainEventBus;
 import com.soe.jcb.eventdriven.demo.payment.dto.PaymentRequest;
 import com.soe.jcb.eventdriven.demo.payment.dto.PaymentResponse;
 import com.soe.jcb.eventdriven.demo.payment.service.PaymentService;
-import com.soe.jcb.eventdriven.demo.order.service.OrderService;
+import com.soe.jcb.eventdriven.demo.payment.event.PaymentCompletedEvent;
+import com.soe.jcb.eventdriven.demo.payment.event.PaymentRefundedEvent;
 import com.soe.jcb.eventdriven.demo.payment.dto.RefundRequest;
 import com.soe.jcb.eventdriven.demo.payment.dto.RefundResponse;
 import com.soe.jcb.eventdriven.demo.order.entity.Order;
@@ -29,14 +31,14 @@ public class StubPaymentService implements PaymentService {
 
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
-    private final OrderService orderService;
+    private final DomainEventBus eventBus;
 
     public StubPaymentService(OrderRepository orderRepository,
                                PaymentRepository paymentRepository,
-                               OrderService orderService) {
+                               DomainEventBus eventBus) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
-        this.orderService = orderService;
+        this.eventBus = eventBus;
     }
 
     @Override
@@ -63,7 +65,8 @@ public class StubPaymentService implements PaymentService {
 
         payment = paymentRepository.save(payment);
 
-        orderService.confirmOrder(order.getId());
+        eventBus.publish(new PaymentCompletedEvent(
+                payment.getId(), order.getId(), orderNumber, order.getUser().getId(), payment.getAmount()));
 
         log.info("Stub payment processed for order {}: amount={}, transactionId={}",
                 orderNumber, payment.getAmount(), payment.getExternalTransactionId());
@@ -87,6 +90,9 @@ public class StubPaymentService implements PaymentService {
         payment.setStatus(PaymentStatus.REFUNDED);
         payment.setRefundedAt(LocalDateTime.now());
         paymentRepository.save(payment);
+
+        eventBus.publish(new PaymentRefundedEvent(
+                payment.getId(), order.getId(), orderNumber, payment.getAmount()));
 
         log.info("Stub refund processed for order {}: amount={}, reason={}",
                 orderNumber, payment.getAmount(), request.reason());

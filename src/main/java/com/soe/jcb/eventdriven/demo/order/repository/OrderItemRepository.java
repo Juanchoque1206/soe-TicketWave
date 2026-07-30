@@ -14,8 +14,8 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
     @Query("SELECT oi FROM OrderItem oi WHERE oi.ticketType.event.id = :eventId " +
             "AND oi.seat.id = :seatId " +
-            "AND oi.order.status IN (com.soe.jcb.eventdriven.demo.entity.OrderStatus.PENDING, " +
-            "com.soe.jcb.eventdriven.demo.entity.OrderStatus.CONFIRMED)")
+            "AND oi.order.status IN (com.soe.jcb.eventdriven.demo.order.entity.OrderStatus.PENDING, " +
+            "com.soe.jcb.eventdriven.demo.order.entity.OrderStatus.CONFIRMED)")
     Optional<OrderItem> findActiveBySeatAndEvent(@Param("eventId") Long eventId,
                                                   @Param("seatId") Long seatId);
 }

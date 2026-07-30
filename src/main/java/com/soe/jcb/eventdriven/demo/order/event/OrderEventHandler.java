@@ -1,0 +1,35 @@
+package com.soe.jcb.eventdriven.demo.order.event;
+
+import com.soe.jcb.eventdriven.demo.common.event.DomainEventBus;
+import com.soe.jcb.eventdriven.demo.order.service.OrderService;
+import com.soe.jcb.eventdriven.demo.payment.event.PaymentCompletedEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+@Component
+public class OrderEventHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderEventHandler.class);
+
+    private final OrderService orderService;
+    private final DomainEventBus eventBus;
+
+    public OrderEventHandler(OrderService orderService, DomainEventBus eventBus) {
+        this.orderService = orderService;
+        this.eventBus = eventBus;
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void onPaymentCompleted(PaymentCompletedEvent event) {
+        log.info("Handling PaymentCompletedEvent for order {}", event.getOrderNumber());
+        var response = orderService.confirmOrder(event.getOrderId());
+        eventBus.publish(new OrderConfirmedEvent(
+                response.id(), response.orderNumber(), event.getUserId()));
+    }
+}

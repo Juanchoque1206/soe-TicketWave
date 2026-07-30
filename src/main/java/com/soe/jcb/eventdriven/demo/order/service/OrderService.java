@@ -1,8 +1,11 @@
 package com.soe.jcb.eventdriven.demo.order.service;
 
+import com.soe.jcb.eventdriven.demo.common.event.DomainEventBus;
 import com.soe.jcb.eventdriven.demo.order.dto.OrderCreateRequest;
 import com.soe.jcb.eventdriven.demo.order.dto.OrderItemRequest;
 import com.soe.jcb.eventdriven.demo.order.dto.OrderResponse;
+import com.soe.jcb.eventdriven.demo.order.event.OrderCancelledEvent;
+import com.soe.jcb.eventdriven.demo.order.event.OrderSubmittedEvent;
 import com.soe.jcb.eventdriven.demo.event.entity.Event;
 import com.soe.jcb.eventdriven.demo.event.entity.EventStatus;
 import com.soe.jcb.eventdriven.demo.order.entity.Order;
@@ -46,6 +49,7 @@ public class OrderService {
     private final SeatRepository seatRepository;
     private final PromotionRepository promotionRepository;
     private final PromotionService promotionService;
+    private final DomainEventBus eventBus;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
@@ -54,7 +58,8 @@ public class OrderService {
                         UserRepository userRepository,
                         SeatRepository seatRepository,
                         PromotionRepository promotionRepository,
-                        PromotionService promotionService) {
+                        PromotionService promotionService,
+                        DomainEventBus eventBus) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.eventRepository = eventRepository;
@@ -63,6 +68,7 @@ public class OrderService {
         this.seatRepository = seatRepository;
         this.promotionRepository = promotionRepository;
         this.promotionService = promotionService;
+        this.eventBus = eventBus;
     }
 
     @Transactional
@@ -156,6 +162,9 @@ public class OrderService {
         order.setTotalAmount(totalAmount);
         order = orderRepository.save(order);
 
+        eventBus.publish(new OrderSubmittedEvent(
+                order.getId(), order.getOrderNumber(), userId));
+
         return OrderResponse.from(order);
     }
 
@@ -192,6 +201,10 @@ public class OrderService {
 
         order.setStatus(OrderStatus.CANCELLED);
         order = orderRepository.save(order);
+
+        eventBus.publish(new OrderCancelledEvent(
+                order.getId(), order.getOrderNumber(), userId));
+
         return OrderResponse.from(order);
     }
 
