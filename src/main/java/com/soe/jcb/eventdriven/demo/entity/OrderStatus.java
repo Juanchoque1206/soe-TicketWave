@@ -1,8 +1,0 @@
-package com.soe.jcb.eventdriven.demo.entity;
-
-public enum OrderStatus {
-    PENDING,
-    CONFIRMED,
-    CANCELLED,
-    REFUNDED
-}
