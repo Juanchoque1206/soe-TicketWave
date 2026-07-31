@@ -26,6 +26,15 @@ public class TicketService {
     }
 
     @Transactional
+    public void revokeTickets(Long orderId) {
+        List<com.soe.jcb.eventdriven.demo.ticket.entity.Ticket> tickets = ticketRepository.findByOrderId(orderId);
+        for (com.soe.jcb.eventdriven.demo.ticket.entity.Ticket ticket : tickets) {
+            ticket.setStatus(com.soe.jcb.eventdriven.demo.ticket.entity.TicketStatus.CANCELLED);
+        }
+        ticketRepository.saveAll(tickets);
+    }
+
+    @Transactional
     public List<TicketResponse> issueTickets(Order order) {
         List<Ticket> tickets = new ArrayList<>();
 

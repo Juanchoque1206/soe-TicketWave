@@ -1,6 +1,8 @@
 package com.soe.jcb.eventdriven.demo.payment.service;
 
 import com.soe.jcb.eventdriven.demo.common.event.DomainEventBus;
+import com.soe.jcb.eventdriven.demo.common.saga.SagaCoordinator;
+import com.soe.jcb.eventdriven.demo.common.saga.SagaStatus;
 import com.soe.jcb.eventdriven.demo.payment.dto.PaymentRequest;
 import com.soe.jcb.eventdriven.demo.payment.dto.PaymentResponse;
 import com.soe.jcb.eventdriven.demo.payment.service.PaymentService;
@@ -32,13 +34,16 @@ public class StubPaymentService implements PaymentService {
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
     private final DomainEventBus eventBus;
+    private final SagaCoordinator sagaCoordinator;
 
     public StubPaymentService(OrderRepository orderRepository,
                                PaymentRepository paymentRepository,
-                               DomainEventBus eventBus) {
+                               DomainEventBus eventBus,
+                               SagaCoordinator sagaCoordinator) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.eventBus = eventBus;
+        this.sagaCoordinator = sagaCoordinator;
     }
 
     @Override
@@ -65,6 +70,8 @@ public class StubPaymentService implements PaymentService {
 
         payment = paymentRepository.save(payment);
 
+        sagaCoordinator.advanceSaga(order.getId(), SagaStatus.PAYMENT_COMPLETED);
+
         eventBus.publish(new PaymentCompletedEvent(
                 payment.getId(), order.getId(), orderNumber, order.getUser().getId(), payment.getAmount()));
 
@@ -90,6 +97,8 @@ public class StubPaymentService implements PaymentService {
         payment.setStatus(PaymentStatus.REFUNDED);
         payment.setRefundedAt(LocalDateTime.now());
         paymentRepository.save(payment);
+
+        sagaCoordinator.advanceSaga(order.getId(), SagaStatus.COMPENSATED);
 
         eventBus.publish(new PaymentRefundedEvent(
                 payment.getId(), order.getId(), orderNumber, payment.getAmount()));

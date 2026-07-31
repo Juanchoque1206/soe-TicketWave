@@ -1,6 +1,9 @@
 package com.soe.jcb.eventdriven.demo.order.service;
 
 import com.soe.jcb.eventdriven.demo.common.event.DomainEventBus;
+import com.soe.jcb.eventdriven.demo.common.saga.OrderSagaRepository;
+import com.soe.jcb.eventdriven.demo.common.saga.SagaCoordinator;
+import com.soe.jcb.eventdriven.demo.common.saga.SagaStatus;
 import com.soe.jcb.eventdriven.demo.order.dto.OrderCreateRequest;
 import com.soe.jcb.eventdriven.demo.order.dto.OrderItemRequest;
 import com.soe.jcb.eventdriven.demo.order.dto.OrderResponse;
@@ -50,6 +53,7 @@ public class OrderService {
     private final PromotionRepository promotionRepository;
     private final PromotionService promotionService;
     private final DomainEventBus eventBus;
+    private final SagaCoordinator sagaCoordinator;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
@@ -59,7 +63,8 @@ public class OrderService {
                         SeatRepository seatRepository,
                         PromotionRepository promotionRepository,
                         PromotionService promotionService,
-                        DomainEventBus eventBus) {
+                        DomainEventBus eventBus,
+                        SagaCoordinator sagaCoordinator) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.eventRepository = eventRepository;
@@ -69,6 +74,7 @@ public class OrderService {
         this.promotionRepository = promotionRepository;
         this.promotionService = promotionService;
         this.eventBus = eventBus;
+        this.sagaCoordinator = sagaCoordinator;
     }
 
     @Transactional
@@ -161,6 +167,9 @@ public class OrderService {
 
         order.setTotalAmount(totalAmount);
         order = orderRepository.save(order);
+
+        sagaCoordinator.createSaga(order.getId(), order.getOrderNumber(), userId);
+        sagaCoordinator.advanceSaga(order.getId(), SagaStatus.ORDER_SUBMITTED);
 
         eventBus.publish(new OrderSubmittedEvent(
                 order.getId(), order.getOrderNumber(), userId));
